@@ -1,0 +1,353 @@
+/* 
+ * LZ4 Compression Algorithm Visualizer
+ * Elegantly crafted by Pratama Varian Andika (2207421040)
+ * Politeknik Negeri Jakarta
+ */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.text-gradient {
+    background: linear-gradient(90deg, #12c2e9, #c471ed, #f64f59);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: gradient 6s ease infinite;
+    background-size: 200% 200%;
+}
+
+@keyframes gradient {
+    0% {background-position: 0% 50%;}
+    50% {background-position: 100% 50%;}
+    100% {background-position: 0% 50%;}
+}
+
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+    border: none;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border-bottom: none;
+    padding: 15px 20px;
+    border-radius: 15px 15px 0 0 !important;
+}
+
+.stats-box {
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.byte-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    min-height: 60px;
+}
+
+.byte {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+/* Add new styles for match references */
+.byte.match-color {
+    width: 60px;  /* Make match boxes wider */
+    position: relative;
+    overflow: visible; /* Allow tooltip to be visible */
+}
+
+.match-info {
+    font-size: 0.7em;
+    text-align: center;
+    line-height: 1.1;
+}
+
+/* Add tooltip styles */
+.match-tooltip {
+    visibility: hidden;
+    width: 120px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -60px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.match-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+}
+
+.byte:hover .match-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.literal-color {
+    background-color: #8ecae6;
+    color: #023047;
+}
+
+.match-color {
+    background-color: #ffb703;
+    color: #023047;
+}
+
+.current-pos-color {
+    background-color: #fb8500;
+    color: white;
+    box-shadow: 0 0 10px rgba(251, 133, 0, 0.7);
+}
+
+.window-color {
+    border: 2px dashed #023047;
+}
+
+.best-match-color {
+    background-color: #219ebc;
+    color: white;
+}
+
+.match-viz {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    min-height: 100px;
+}
+
+.match-line {
+    stroke: #219ebc;
+    stroke-width: 2;
+    stroke-dasharray: 5,5;
+    animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: -10;
+    }
+}
+
+.explanation {
+    background-color: #e9ecef;
+}
+
+.cursor-position {
+    height: 4px;
+    background-color: #fb8500;
+    width: 100%;
+    margin-top: -4px;
+    position: relative;
+}
+
+.cursor-marker {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid #fb8500;
+    bottom: 0;
+    transform: translateY(100%);
+    transition: left 0.3s ease;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.legend-box {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    border-radius: 4px;
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.progress {
+    height: 10px;
+    border-radius: 5px;
+}
+
+.btn-group .btn {
+    border-radius: 0;
+}
+
+.btn-group .btn:first-child {
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+}
+
+.btn-group .btn:last-child {
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+#visualization-container {
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    padding: 20px;
+    background-color: white;
+}
+
+/* Match visualization styles */
+.matches-list {
+    margin-bottom: 15px;
+}
+
+.match-item {
+    padding: 8px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.match-item.selected {
+    background-color: #d1ecf1;
+    border-left: 4px solid #219ebc;
+}
+
+.match-num {
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.match-pos, .match-len {
+    margin-right: 15px;
+}
+
+.match-bytes {
+    font-family: monospace;
+    background-color: #e9ecef;
+    padding: 2px 5px;
+    border-radius: 3px;
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.match-selected {
+    color: #28a745;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.match-connection-viz {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.no-matches {
+    padding: 20px;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Additional byte styles for output display */
+.byte .small {
+    font-size: 0.7em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .byte {
+        width: 30px;
+        height: 30px;
+        font-size: 0.8em;
+    }
+    
+    .match-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .match-bytes {
+        width: 100%;
+        margin-top: 5px;
+    }
+}
+
+/* Animation for step transitions */
+@keyframes highlightNew {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.highlight-new {
+    animation: highlightNew 0.5s ease;
+}
+
+/* Add creator credit styling */
+.creator-credit {
+    display: inline-block;
+    margin-left: 10px;
+    padding-left: 10px;
+    border-left: 1px solid #ccc;
+    font-style: italic;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.creator-credit:hover {
+    opacity: 1;
+}
+
+.creator-credit small {
+    font-size: 0.8em;
+    opacity: 0.7;
+}
