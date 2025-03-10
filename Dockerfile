@@ -14,9 +14,10 @@ RUN mkdir -p /app/static/css /app/static/js /app/templates
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
 
 # Expose port
 EXPOSE 8080
 
-# Run the application
+# Run the application with gunicorn
 CMD python3 app.py
