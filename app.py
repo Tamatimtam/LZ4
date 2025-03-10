@@ -6,6 +6,7 @@ Institution: Politeknik Negeri Jakarta
 """
 from flask import Flask, render_template, request, jsonify
 import json
+import os
 from LZ4 import lz4_compress_with_steps, lz4_decompress
 
 app = Flask(__name__)
@@ -57,4 +58,6 @@ def decompress():
     })
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Get port from environment variable or use 8080 as default
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port, debug=False)
