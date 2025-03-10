@@ -78,6 +78,39 @@ document.addEventListener('DOMContentLoaded', function() {
             compressionSteps = data.steps;
             compressionRatioElem.textContent = data.compression_ratio.toFixed(2) + 'x';
             
+            // Calculate sizes for frontend display
+            const originalSize = inputData.length;
+            
+            // Calculate compressed size (each match is counted as 2 bytes, each literal as 1 byte)
+            let compressedSize = 0;
+            for (const item of compressedData) {
+                if (item.type === 'match') {
+                    // Each match reference takes 2 bytes (offset + length)
+                    compressedSize += 2;
+                } else {
+                    // Each literal takes 1 byte
+                    compressedSize += 1;
+                }
+            }
+            
+            // Update the size comparison
+            document.getElementById('original-size').textContent = originalSize;
+            document.getElementById('compressed-size').textContent = compressedSize;
+            
+            // Calculate savings percentage
+            const savedBytes = originalSize - compressedSize;
+            const savingsPercent = originalSize > 0 ? Math.round((savedBytes / originalSize) * 100) : 0;
+            
+            const savingsDisplay = document.getElementById('savings-percentage');
+            
+            if (savingsPercent > 0) {
+                savingsDisplay.textContent = savingsPercent + '%';
+                savingsDisplay.style.color = savingsPercent > 30 ? '#28a745' : '#ffc107';
+            } else {
+                savingsDisplay.textContent = 'None';
+                savingsDisplay.style.color = '#dc3545';
+            }
+            
             // Enable controls
             stepBackBtn.disabled = false;
             stepForwardBtn.disabled = false;
@@ -390,6 +423,12 @@ document.addEventListener('DOMContentLoaded', function() {
         currentStepElem.textContent = '0/0';
         progressBar.style.width = '0%';
         compressionRatioElem.textContent = '-';
+        
+        // Reset size comparison
+        document.getElementById('original-size').textContent = '-';
+        document.getElementById('compressed-size').textContent = '-';
+        document.getElementById('savings-percentage').textContent = '-';
+        document.getElementById('savings-percentage').style.color = '';
         
         // Reset buttons
         stepBackBtn.disabled = true;
