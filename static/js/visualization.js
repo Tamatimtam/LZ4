@@ -56,6 +56,12 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // Check for excessive data size on the client side
+        if (inputData.length > 100 * 1024) {  // 100KB
+            alert('Input data is too large. Maximum size is 100KB.');
+            return;
+        }
+        
         // Reset UI
         resetVisualization();
         
@@ -71,8 +77,25 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify({ data: inputData }),
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                // Handle HTTP errors
+                if (response.status === 429) {
+                    throw new Error('Rate limit exceeded. Please wait before trying again.');
+                } else if (response.status === 413) {
+                    throw new Error('Input data is too large.');
+                } else {
+                    throw new Error('Server error occurred. Please try again later.');
+                }
+            }
+            return response.json();
+        })
         .then(data => {
+            // Check for API error responses
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
             originalData = data.original_data;
             compressedData = data.compressed_data;
             compressionSteps = data.steps;
@@ -132,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred during compression');
+            alert(error.message || 'An error occurred during compression');
         })
         .finally(() => {
             compressBtn.disabled = false;
