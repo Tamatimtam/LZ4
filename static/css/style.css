@@ -466,3 +466,25 @@ body {
     color: #dc3545;
     text-decoration: line-through;
 }
+
+.mute-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+
+.mute-button:hover {
+    opacity: 1;
+}
