@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentExplanationElem = document.getElementById('current-explanation');
     const autoPlayCheckbox = document.getElementById('auto-play');
     const speedControl = document.getElementById('speed-control');
-    
+
     // State
     let compressionSteps = [];
     let compressedData = [];
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize speed from slider
     updateAnimationSpeed();
-    
+
     // Event Listeners
     compressBtn.addEventListener('click', startCompression);
     stepBackBtn.addEventListener('click', () => stepAnimation(-1));
@@ -35,40 +35,45 @@ document.addEventListener('DOMContentLoaded', function() {
     playPauseBtn.addEventListener('click', togglePlayPause);
     resetBtn.addEventListener('click', resetVisualization);
     speedControl.addEventListener('input', updateAnimationSpeed);
-    
+
     function updateAnimationSpeed() {
         // Convert the 1-10 range to milliseconds (slower to faster)
         const speedValue = parseInt(speedControl.value);
         animationSpeed = 2000 / speedValue;
-        
+
         // If animation is running, restart it with new speed
         if (isPlaying) {
             clearInterval(animationInterval);
             animationInterval = setInterval(() => stepAnimation(1), animationSpeed);
         }
     }
-    
+
     function startCompression() {
         const inputData = inputDataElem.value;
-        
+
         if (!inputData.trim()) {
             alert('Please enter some data to compress');
             return;
         }
-        
+
         // Check for excessive data size on the client side
         if (inputData.length > 100 * 1024) {  // 100KB
             alert('Input data is too large. Maximum size is 100KB.');
             return;
         }
-        
+
         // Reset UI
         resetVisualization();
-        
+
+        // Play UI sound
+        if (window.audioManager) {
+            window.audioManager.play('uiAction');
+        }
+
         // Show loading state
         compressBtn.disabled = true;
         compressBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Compressing...';
-        
+
         // Send compression request
         fetch('/compress', {
             method: 'POST',
@@ -95,15 +100,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.error) {
                 throw new Error(data.error);
             }
-            
+
             originalData = data.original_data;
             compressedData = data.compressed_data;
             compressionSteps = data.steps;
             compressionRatioElem.textContent = data.compression_ratio.toFixed(2) + 'x';
-            
+
             // Calculate sizes for frontend display
             const originalSize = inputData.length;
-            
+
             // Calculate compressed size (each match is counted as 2 bytes, each literal as 1 byte)
             let compressedSize = 0;
             for (const item of compressedData) {
@@ -115,17 +120,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     compressedSize += 1;
                 }
             }
-            
+
             // Update the size comparison
             document.getElementById('original-size').textContent = originalSize;
             document.getElementById('compressed-size').textContent = compressedSize;
-            
+
             // Calculate savings percentage
             const savedBytes = originalSize - compressedSize;
             const savingsPercent = originalSize > 0 ? Math.round((savedBytes / originalSize) * 100) : 0;
-            
+
             const savingsDisplay = document.getElementById('savings-percentage');
-            
+
             if (savingsPercent > 0) {
                 savingsDisplay.textContent = savingsPercent + '%';
                 savingsDisplay.style.color = savingsPercent > 30 ? '#28a745' : '#ffc107';
@@ -133,19 +138,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 savingsDisplay.textContent = 'None';
                 savingsDisplay.style.color = '#dc3545';
             }
-            
+
             // Enable controls
             stepBackBtn.disabled = false;
             stepForwardBtn.disabled = false;
             playPauseBtn.disabled = false;
-            
+
             // Update UI
             currentStepElem.textContent = `0/${compressionSteps.length}`;
             progressBar.style.width = '0%';
-            
+
             // Set up initial visualization
             renderOriginalData();
-            
+
             // Auto-play if checked
             if (autoPlayCheckbox.checked) {
                 isPlaying = true;
@@ -162,53 +167,62 @@ document.addEventListener('DOMContentLoaded', function() {
             compressBtn.textContent = 'Compress';
         });
     }
-    
+
     function renderOriginalData() {
         windowBytesElem.innerHTML = '';
-        
+
         // Render original data bytes
         originalData.forEach((byte, idx) => {
             const byteElem = document.createElement('div');
             byteElem.className = 'byte';
             byteElem.dataset.index = idx;
-            
+
             // Display ASCII character if printable, otherwise show byte value
             if (byte >= 32 && byte <= 126) {
                 byteElem.textContent = String.fromCharCode(byte);
             } else {
                 byteElem.textContent = byte;
             }
-            
+
             windowBytesElem.appendChild(byteElem);
         });
     }
-    
+
     function stepAnimation(direction) {
         // Calculate new step index
         const newStepIdx = currentStepIdx + direction;
-        
+
         // Check bounds
         if (newStepIdx < -1 || newStepIdx >= compressionSteps.length) {
             if (isPlaying && newStepIdx >= compressionSteps.length) {
                 // Stop animation when we reach the end
                 togglePlayPause();
+
+                // Play success sound when completed
+                if (window.audioManager) {
+                    const ratio = parseFloat(compressionRatioElem.textContent);
+                    window.audioManager.playSuccess(ratio);
+                }
             }
             return;
         }
-        
+
         // Update current step
         currentStepIdx = newStepIdx;
-        
+
         // Update UI
         updateStepUI();
-        
+
+        // Play appropriate sound for this step
+        playStepSound();
+
         if (currentStepIdx === compressionSteps.length - 1) {
             // Reached the end, disable forward button
             stepForwardBtn.disabled = true;
         } else {
             stepForwardBtn.disabled = false;
         }
-        
+
         if (currentStepIdx === -1) {
             // At the beginning, disable back button
             stepBackBtn.disabled = true;
@@ -216,46 +230,46 @@ document.addEventListener('DOMContentLoaded', function() {
             stepBackBtn.disabled = false;
         }
     }
-    
+
     function updateStepUI() {
         // Update progress indicators
         currentStepElem.textContent = `${currentStepIdx + 1}/${compressionSteps.length}`;
         const progressPercentage = ((currentStepIdx + 1) / compressionSteps.length) * 100;
         progressBar.style.width = `${progressPercentage}%`;
-        
+
         // Clear previous visualization
         clearVisualization();
-        
+
         if (currentStepIdx === -1) {
             // Show initial state
             renderOriginalData();
             currentExplanationElem.textContent = 'Starting compression. The algorithm will process each byte of input data.';
             return;
         }
-        
+
         // Get current step data
         const step = compressionSteps[currentStepIdx];
-        
+
         // Visualize the current window state
         visualizeWindow(step);
-        
+
         // Visualize matches if available
         visualizeMatches(step);
-        
+
         // Update the compression output
         updateCompressionOutput(step);
-        
+
         // Update explanation
         updateExplanation(step);
     }
-    
+
     function visualizeWindow(step) {
         // Reset all bytes to default style
         const byteElements = windowBytesElem.querySelectorAll('.byte');
         byteElements.forEach(elem => {
             elem.className = 'byte';
         });
-        
+
         // Highlight the window area
         for (let i = step.window_start; i < step.position; i++) {
             const byteElem = byteElements[i];
@@ -263,23 +277,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 byteElem.classList.add('window-color');
             }
         }
-        
+
         // Highlight current position
         if (step.position < byteElements.length) {
             byteElements[step.position].classList.add('current-pos-color');
         }
-        
+
         // Highlight best match if there is one
         if (step.action === 'match') {
             const matchStart = step.best_match_start;
             const matchLength = step.match_length;
-            
+
             for (let i = 0; i < matchLength; i++) {
                 // Highlight in window
                 if (matchStart + i < step.position) {
                     byteElements[matchStart + i].classList.add('best-match-color');
                 }
-                
+
                 // Highlight current position and forward
                 if (step.position + i < byteElements.length) {
                     byteElements[step.position + i].classList.add('match-color');
@@ -290,36 +304,36 @@ document.addEventListener('DOMContentLoaded', function() {
             byteElements[step.position].classList.add('literal-color');
         }
     }
-    
+
     function visualizeMatches(step) {
         matchVisualizationElem.innerHTML = '';
-        
+
         if (step.matches && step.matches.length > 0) {
             // Create a text representation of matches
             const matchesDiv = document.createElement('div');
             matchesDiv.className = 'matches-list fade-in';
-            
+
             // Show possible matches
             let matchesHTML = '<h5>Possible Matches Found:</h5>';
             step.matches.forEach((match, idx) => {
                 const isSelected = (step.action === 'match' && step.best_match_start === match.start);
                 matchesHTML += `
                     <div class="match-item ${isSelected ? 'selected' : ''}">
-                        <span class="match-num">${idx + 1}.</span> 
+                        <span class="match-num">${idx + 1}.</span>
                         <span class="match-pos">Position ${match.start}</span>
                         <span class="match-len">Length: ${match.length}</span>
-                        <span class="match-bytes">${match.matched_bytes.map(b => 
-                            typeof b === 'number' && b >= 32 && b <= 126 ? 
+                        <span class="match-bytes">${match.matched_bytes.map(b =>
+                            typeof b === 'number' && b >= 32 && b <= 126 ?
                             String.fromCharCode(b) : b
                         ).join(' ')}</span>
                         ${isSelected ? '<span class="match-selected">✓ Selected</span>' : ''}
                     </div>
                 `;
             });
-            
+
             matchesDiv.innerHTML = matchesHTML;
             matchVisualizationElem.appendChild(matchesDiv);
-            
+
             // Create a visualization of the best match connection
             if (step.action === 'match') {
                 const svgContainer = document.createElement('div');
@@ -341,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
             matchVisualizationElem.appendChild(noMatchesDiv);
         }
     }
-    
+
     function updateCompressionOutput(step) {
         // Get all the compression outputs up to this step
         const currentOutputs = compressionSteps
@@ -349,8 +363,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .map(s => {
                 if (s.action === 'match') {
                     return {
-                        type: 'match', 
-                        offset: s.match_offset, 
+                        type: 'match',
+                        offset: s.match_offset,
                         length: s.match_length
                     };
                 } else {
@@ -360,28 +374,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     };
                 }
             });
-        
+
         // Display the output
         outputBytesElem.innerHTML = '';
         currentOutputs.forEach(output => {
             const outputElem = document.createElement('div');
-            
+
             if (output.type === 'match') {
                 outputElem.className = 'byte match-color';
-                
+
                 // Use more compact display format
                 const matchInfo = document.createElement('div');
                 matchInfo.className = 'match-info';
                 matchInfo.textContent = `${output.offset},${output.length}`;
-                
+
                 // Add tooltip with detailed information
                 const tooltip = document.createElement('span');
                 tooltip.className = 'match-tooltip';
                 tooltip.textContent = `Offset: ${output.offset}, Length: ${output.length}`;
-                
+
                 outputElem.appendChild(matchInfo);
                 outputElem.appendChild(tooltip);
-                
+
                 // Visual hint: make background color intensity proportional to match length
                 // Longer matches = more saturated color (better compression)
                 const saturation = Math.min(100, 50 + output.length * 5); // Increase saturation with match length
@@ -396,19 +410,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     outputElem.textContent = value;
                 }
             }
-            
+
             // Highlight the last added element
             if (outputBytesElem.children.length === currentStepIdx) {
                 outputElem.classList.add('fade-in');
             }
-            
+
             outputBytesElem.appendChild(outputElem);
         });
     }
-    
+
     function updateExplanation(step) {
         let explanation = '';
-        
+
         if (step.action === 'match') {
             explanation = `
                 Found a match of length ${step.match_length} at offset ${step.match_offset}.
@@ -421,23 +435,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 (${step.literal_value >= 32 && step.literal_value <= 126 ? String.fromCharCode(step.literal_value) : 'non-printable'}).
             `;
         }
-        
+
         currentExplanationElem.innerHTML = explanation;
     }
-    
+
     function clearVisualization() {
         // Clear match visualization area
         matchVisualizationElem.innerHTML = '';
     }
-    
+
     function resetVisualization() {
         // Reset state
         currentStepIdx = -1;
         isPlaying = false;
-        
+
+        // Play reset sound
+        if (window.audioManager) {
+            window.audioManager.playReset();
+        }
+
         // Clear animation interval
         clearInterval(animationInterval);
-        
+
         // Reset UI
         windowBytesElem.innerHTML = '';
         outputBytesElem.innerHTML = '';
@@ -446,32 +465,56 @@ document.addEventListener('DOMContentLoaded', function() {
         currentStepElem.textContent = '0/0';
         progressBar.style.width = '0%';
         compressionRatioElem.textContent = '-';
-        
+
         // Reset size comparison
         document.getElementById('original-size').textContent = '-';
         document.getElementById('compressed-size').textContent = '-';
         document.getElementById('savings-percentage').textContent = '-';
         document.getElementById('savings-percentage').style.color = '';
-        
+
         // Reset buttons
         stepBackBtn.disabled = true;
         stepForwardBtn.disabled = true;
         playPauseBtn.textContent = 'Play';
     }
-    
+
     function togglePlayPause() {
         if (isPlaying) {
             // Pause animation
             clearInterval(animationInterval);
             playPauseBtn.textContent = 'Play';
+
+            // Play UI sound
+            if (window.audioManager) {
+                window.audioManager.play('click');
+            }
         } else {
             // Start or resume animation
             if (currentStepIdx < compressionSteps.length - 1) {
                 animationInterval = setInterval(() => stepAnimation(1), animationSpeed);
                 playPauseBtn.textContent = 'Pause';
+
+                // Play UI sound
+                if (window.audioManager) {
+                    window.audioManager.play('click');
+                }
             }
         }
-        
+
         isPlaying = !isPlaying;
+    }
+
+    // Add a new function to play the appropriate sound for the current step
+    function playStepSound() {
+        if (!window.audioManager || currentStepIdx < 0) return;
+
+        const step = compressionSteps[currentStepIdx];
+        if (step.action === 'match') {
+            window.audioManager.playMatch(step.match_length);
+        } else if (step.action === 'literal') {
+            window.audioManager.playLiteral();
+        } else {
+            window.audioManager.playStep();
+        }
     }
 });

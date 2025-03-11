@@ -1,4 +1,4 @@
-/* 
+/*
  * LZ4 Compression Algorithm Visualizer
  * Elegantly crafted by Pratama Varian Andika (2207421040)
  * Politeknik Negeri Jakarta
@@ -309,12 +309,12 @@ body {
         height: 30px;
         font-size: 0.8em;
     }
-    
+
     .match-item {
         flex-direction: column;
         align-items: flex-start;
     }
-    
+
     .match-bytes {
         width: 100%;
         margin-top: 5px;
@@ -424,14 +424,45 @@ body {
     .size-comparison-container {
         flex-direction: column;
     }
-    
+
     .size-box {
         width: 100%;
         margin: 5px 0;
     }
-    
+
     .arrow-container {
         transform: rotate(90deg);
         margin: 10px 0;
     }
+}
+
+/* Sound effect visual feedback */
+.sound-pulse {
+    animation: soundPulse 0.5s ease-out;
+}
+
+@keyframes soundPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(251, 133, 0, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(251, 133, 0, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(251, 133, 0, 0);
+    }
+}
+
+/* Make the sound toggle more visible */
+#sound-toggle {
+    transform: scale(1.2);
+}
+
+#sound-toggle:checked + label {
+    color: #28a745;
+}
+
+#sound-toggle:not(:checked) + label {
+    color: #dc3545;
+    text-decoration: line-through;
 }
