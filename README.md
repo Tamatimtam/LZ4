@@ -118,4 +118,4 @@ Happy compressing! 🎈
 
 *Created with ❤️ and a lot of caffeine by Pratama Varian Andika (2207421040), Politeknik Negeri Jakarta*
 
-*© 2025 - But seriously, it's open source, so go wild with it*
+*© 2023 - But seriously, it's open source, so go wild with it*
