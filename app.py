@@ -28,10 +28,10 @@ def validate_request():
     # Limit request body size (5MB)
     max_content_length = 5 * 1024 * 1024  # 5 MB
     content_length = request.content_length
-    
+
     if content_length and content_length > max_content_length:
         abort(413)  # Request Entity Too Large
-    
+
     # Limit input data length for compression (100KB)
     if request.path == '/compress' and request.method == 'POST':
         data = request.json.get('data', '')
@@ -48,30 +48,30 @@ def compress():
     try:
         start_time = time.time()
         data = request.json.get('data', '')
-        
+
         # Input validation
         if not isinstance(data, str):
             return jsonify({'error': 'Invalid input data type'}), 400
-            
+
         if len(data) > 100 * 1024:  # Double-check size (also checked in middleware)
             return jsonify({'error': 'Input data too large', 'max_size': '100KB'}), 413
-            
+
         # Time limit to prevent long-running compression
         max_processing_time = 5  # seconds
-        
+
         # Encode for compression
         data_bytes = data.encode('utf-8')
         compression_steps, compressed_data = lz4_compress_with_steps(data_bytes)
-        
+
         # Check if processing took too long
         elapsed_time = time.time() - start_time
         if elapsed_time > max_processing_time:
             app.logger.warning(f"Compression took {elapsed_time}s which is too long")
             # Still return the result, but log the warning
-        
+
         # Convert bytes to list of integers for JSON serialization
         data_list = list(data_bytes)
-        
+
         # Process the compressed data to make it JSON serializable
         serializable_compressed = []
         for item in compressed_data:
@@ -79,12 +79,19 @@ def compress():
                 serializable_compressed.append({"type": "match", "offset": item[0], "length": item[1]})
             else:
                 serializable_compressed.append({"type": "literal", "value": item})
-        
+
+        # Calculate compression ratio
+        original_size = len(data_list)
+        # Calculate the compressed size by counting total bytes required for the compressed data
+        compressed_size = sum(1 if step.get('type') == 'literal' else 2 for step in serializable_compressed)
+        compression_ratio = compressed_size / original_size  if compressed_size > 0 else 0
+        compression_ratio_formatted = f"{compression_ratio:.2f}x"
+
         return jsonify({
             'original_data': data_list,
             'compressed_data': serializable_compressed,
             'steps': compression_steps,
-            'compression_ratio': len(data_list) / (sum(step.get('length', 1) for step in serializable_compressed) + len(serializable_compressed))
+            'compression_ratio': compression_ratio_formatted
         })
     except Exception as e:
         app.logger.error(f"Error during compression: {str(e)}")
@@ -95,40 +102,40 @@ def compress():
 def decompress():
     try:
         compressed_data = request.json.get('compressed_data', [])
-        
+
         # Input validation
         if not isinstance(compressed_data, list):
             return jsonify({'error': 'Invalid input data type'}), 400
-            
+
         if len(compressed_data) > 10000:  # Arbitrary limit
             return jsonify({'error': 'Input data too large'}), 413
-        
+
         # Convert the JSON representation back to the format LZ4 decompress expects
         decompression_input = []
         for item in compressed_data:
             if not isinstance(item, dict):
                 return jsonify({'error': 'Invalid compressed data format'}), 400
-                
+
             if item.get('type') == 'match':
                 offset = item.get('offset')
                 length = item.get('length')
-                
+
                 # Validate offset and length
                 if not isinstance(offset, int) or not isinstance(length, int):
                     return jsonify({'error': 'Invalid match data'}), 400
-                    
+
                 if offset <= 0 or length <= 0 or length > 1000:
                     return jsonify({'error': 'Invalid match parameters'}), 400
-                    
+
                 decompression_input.append((offset, length))
             else:
                 value = item.get('value')
                 if not isinstance(value, int):
                     return jsonify({'error': 'Invalid literal value'}), 400
                 decompression_input.append(value)
-        
+
         decompressed_data = lz4_decompress(decompression_input)
-        
+
         return jsonify({
             'decompressed_data': list(decompressed_data)
         })

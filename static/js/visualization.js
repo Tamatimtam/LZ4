@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
             originalData = data.original_data;
             compressedData = data.compressed_data;
             compressionSteps = data.steps;
-            compressionRatioElem.textContent = data.compression_ratio.toFixed(2) + 'x';
+            compressionRatioElem.textContent = data.compression_ratio
 
             // Calculate sizes for frontend display
             const originalSize = inputData.length;
@@ -517,4 +517,6 @@ document.addEventListener('DOMContentLoaded', function() {
             window.audioManager.playStep();
         }
     }
+
+
 });
