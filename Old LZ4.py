@@ -21,9 +21,9 @@ def lz4_compress(data):
             matching_bytes = 0
 
             # Keep counting as long as bytes match (up to 255 max)
-            while (matching_bytes < 255 and  # Don't match more than 255 bytes
-                   current_position + matching_bytes < len(data) and  # Don't go past the end
-                   data[previous_position + matching_bytes] == data[current_position + matching_bytes]):  # Bytes match
+            while (data[previous_position + matching_bytes] == data[current_position + matching_bytes] and  # Bytes match
+                   matching_bytes < 255 and  # Don't match more than 255 bytes
+                   current_position + matching_bytes < len(data)):  # Don't go past the end
                 matching_bytes += 1
 
             # Remember if this is the best match so far
@@ -46,23 +46,34 @@ def lz4_compress(data):
     return result
 
 
-
-
 def lz4_decompress(compressed):
+    # This will hold our decompressed data
     decompressed = []
 
-    i = 0
-    while i < len(compressed):
-        if isinstance(compressed[i], tuple):  # Match reference (offset, length)
-            offset, length = compressed[i]
+    # Start from the beginning of the compressed data
+    current_position = 0
+
+    # Process the entire compressed data
+    while current_position < len(compressed):
+        # Check if this is a match reference (offset, length) or a literal byte
+        if isinstance(compressed[current_position], tuple):
+            # It's a match reference
+            offset, length = compressed[current_position]
+
+            # Calculate where to start copying from (looking back in our output)
             start_pos = len(decompressed) - offset
-            for j in range(length):
-                decompressed.append(decompressed[start_pos + j])
+
+            # Copy the matched bytes from our already decompressed data
+            for i in range(length):
+                decompressed.append(decompressed[start_pos + i])
         else:
-            decompressed.append(compressed[i])  # Literal byte
+            # It's a literal byte, just add it to our output
+            decompressed.append(compressed[current_position])
 
-        i += 1
+        # Move to the next element in the compressed data
+        current_position += 1
 
+    # Convert the list of bytes to a bytes object
     return bytes(decompressed)
 
 
